@@ -1,0 +1,79 @@
+pipeline {
+  agent any
+  environment {
+    DOCKERHUB = 'devopsdecode/bookstore-app'
+    WORKER_IP = '13.232.28.45'
+  }
+  stages {
+    stage('Checkout') { steps { checkout scm } }
+    stage('Build & Test') {
+      steps {
+        dir('bookstore-app') {
+          sh 'cd app && npm install && npm test'
+        }
+      }
+    }
+    stage('Security Scan') {
+      parallel {
+        stage('Dependency Check') {
+          steps {
+            dir('bookstore-app') {
+              sh 'cd app && npm audit --audit-level=high'
+            }
+          }
+        }
+        stage('Code Security') {
+          steps {
+            dir('bookstore-app') {
+              sh 'cd app && find src -name "*.js" -exec grep -l "password" {} + || echo "No passwords found"'
+              sh 'cd app && find src -name "*.js" -exec grep -l "secret" {} + || echo "No secrets found"'
+              sh 'cd app && find src -name "*.js" -exec grep -l "key" {} + || echo "No keys found"'
+            }
+          }
+        }
+      }
+    }
+    stage('Docker Build & Push') {
+      steps {
+        dir('bookstore-app') {
+          withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+            sh '''
+              cd app
+              TAG=$(git rev-parse --short HEAD)
+              docker build -t $DOCKERHUB:latest .
+              echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+              docker push $DOCKERHUB:latest
+              echo $DOCKERHUB:latest > ../image.info
+            '''
+          }
+        }
+      }
+    }
+    stage('Container Security') {
+      steps {
+        dir('bookstore-app') {
+          sh '''
+            cd app
+            mkdir -p security-reports
+            TAG=$(git rev-parse --short HEAD)
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/security-reports:/reports aquasec/trivy image --format json --output /reports/trivy-report.json $DOCKERHUB:latest || true
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/security-reports:/reports aquasec/trivy image --format table --output /reports/trivy-report.txt $DOCKERHUB:latest || true
+          '''
+        }
+      }
+    }
+  }
+  post { 
+    always { 
+      echo 'Pipeline completed'
+      archiveArtifacts artifacts: 'bookstore-app/app/security-reports/**', allowEmptyArchive: true    }
+    success {
+      echo 'Build successful - Docker image pushed'
+      build job: 'bookstore-app-cd', wait: false
+
+    }
+    failure {
+      echo 'Build failed - check logs for details'
+    }
+  }
+}
