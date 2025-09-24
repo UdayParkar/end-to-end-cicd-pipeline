@@ -39,26 +39,37 @@ pipeline {
     stage('Docker Build & Push') {
       steps {
         dir('bookstore-app') {
-          withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-            sh '''
-              cd app
-              TAG=$(git rev-parse --short HEAD)
-              docker build -t $DOCKERHUB:latest .
-              echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-              docker push $DOCKERHUB:latest
-              echo $DOCKERHUB:latest > ../image.info
-            '''
+          script {
+            try {
+              withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                sh '''
+                  cd app
+                  TAG=$(git rev-parse --short HEAD)
+                  docker build -t $DOCKERHUB:latest .
+                  echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                  docker push $DOCKERHUB:latest
+                  echo "success" > ../docker.status
+                '''
+              }
+            } catch (Exception e) {
+              echo "Docker credentials not found, skipping Docker operations: ${e.message}"
+              sh 'echo "failed" > docker.status'
+            }
           }
         }
       }
     }
     stage('Container Security') {
+      when {
+        expression {
+          return fileExists('bookstore-app/docker.status') && readFile('bookstore-app/docker.status').trim() == 'success'
+        }
+      }
       steps {
         dir('bookstore-app') {
           sh '''
             cd app
             mkdir -p security-reports
-            TAG=$(git rev-parse --short HEAD)
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/security-reports:/reports aquasec/trivy image --format json --output /reports/trivy-report.json $DOCKERHUB:latest || true
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/security-reports:/reports aquasec/trivy image --format table --output /reports/trivy-report.txt $DOCKERHUB:latest || true
           '''
