@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
       .category{background:#ff7f50;color:white;padding:5px 10px;border-radius:20px;font-size:12px;display:inline-block;margin-top:8px}
     </style></head><body>
       <div class="header">
-        <h1>✈️ यात्रा अन्वेषक</h1>
+        <h1> यात्रा अन्वेषक</h1>
         <p>आपके सपनों की मंज़िलें, प्यार के साथ चुनी गई ❤️</p>
       </div>
       <div class="packages">
