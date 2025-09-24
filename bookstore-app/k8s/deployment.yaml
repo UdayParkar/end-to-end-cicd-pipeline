@@ -11,7 +11,8 @@ spec:
     spec:
       containers:
       - name: bookstore
-        image: devopsdecode/bookstore-app:7cced57
+        image: udayparkar/bookstore-app:latest
+        imagePullPolicy: Always
         ports: [{ containerPort: 3000 }]
         readinessProbe:
           httpGet: { path: /health, port: 3000 }
