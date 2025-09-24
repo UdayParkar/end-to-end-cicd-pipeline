@@ -47,7 +47,7 @@ describe('Travel Explorer API', () => {
   test('GET / returns HTML page', async () => {
     const res = await request(app).get('/');
     expect(res.statusCode).toBe(200);
-    expect(res.text).toContain('Travel Explorer');
+    expect(res.text).toContain('यात्रा अन्वेषक');
     expect(res.text).toContain('Bali Getaway');
   });
 });

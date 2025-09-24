@@ -45,6 +45,15 @@
         name: jenkins
         enabled: yes
         state: started
+    - name: add jenkins to docker group
+      user:
+        name: jenkins
+        groups: docker
+        append: yes
+    - name: restart jenkins
+      systemd:
+        name: jenkins
+        state: restarted
 
 - hosts: worker
   become: true
@@ -53,6 +62,11 @@
       apt:
         name: docker.io
         state: present
+    - name: add ubuntu to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
     - name: install curl
       apt:
         name: curl
