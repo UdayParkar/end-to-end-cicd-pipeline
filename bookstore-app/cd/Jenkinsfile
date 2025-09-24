@@ -8,7 +8,7 @@
       stage('Deploy to k8s') {
         steps {
           sh '''
-            ssh -o StrictHostKeyChecking=no -i ~/.ssh/ud_key.pem ubuntu@${WORKER_IP} "export KUBECONFIG=/home/ubuntu/kubeconfig && kubectl set image deployment/bookstore bookstore=${DOCKERHUB_IMAGE} --record && kubectl rollout restart deployment/bookstore"
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/ud_key.pem ubuntu@${WORKER_IP} "export KUBECONFIG=/home/ubuntu/kubeconfig && kubectl set image deployment/bookstore bookstore=${DOCKERHUB_IMAGE} --record"
           '''
         }
       }
